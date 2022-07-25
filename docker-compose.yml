@@ -1,0 +1,76 @@
+version: '3.7'
+# Increment version numbers whenever updating config files
+configs:
+  wiki-config-v1:
+    file: ./wiki/LocalSettings.php
+  php-config-v1:
+    file: ./wiki/php.ini
+  phpmyadmin-apache2-config-v1:
+    file: ./phpmyadmin/apache2.conf
+services:
+  mediawiki:
+    image: # Image built from Dockerfile
+    deploy:
+      restart_policy:
+        condition: any
+    volumes:
+      - images-data:/var/www/html/images
+    environment:
+      - WIKI_PORT=${wiki_port}
+      - HOST_IP=${host_ip}
+      - wgServer=${wgserver}
+    ports:
+      - "${wiki_port}:80"
+    # Increment version numbers whenever updating config files
+    configs:
+      - source: wiki-config-v1
+        target: /var/www/html/LocalSettings.php
+      - source: php-config-v1
+        target: /var/www/html/php.ini
+
+  database:
+    image: mysql:5
+    deploy:
+      restart_policy:
+        condition: any
+    volumes:
+      - database-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD='${database_root_password}'
+      - MYSQL_DATABASE=${database_name}
+      - MYSQL_USER=${database_user}
+      - MYSQL_PASSWORD=${database_password}
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5
+    deploy:
+      restart_policy:
+        condition: any
+    ports:
+      - "${phpmyadmin_port}:80"
+    environment:
+      - PMA_HOST=database
+    # Increment version number whenever updating config files
+    configs:
+      - source: phpmyadmin-apache2-config-v1
+        target: /etc/apache2/apache2.conf
+
+volumes:
+  database-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${database_data_directory}
+  images-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${images_directory}
+  backup-data:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ${backup_directory}
